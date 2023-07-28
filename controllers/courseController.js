@@ -3,12 +3,16 @@ let controller = require('./controller');
 const Course = require('../models/course');
 const User = require("../models/user");
 let fs = require('fs');
-
+const { log } = require('console');
+const zip = require('express-zip')
+// const zip = require('express-easy-zip');
 
 class courseController extends controller {
 
     async createCourse(req, res) {
         try {
+            // console.log(req.body);
+            // console.log(req.body);
 
             let course = new Course({
                 class_id: req.body.class_id,
@@ -29,12 +33,22 @@ class courseController extends controller {
 
     async getAllCourse(req, res) {
         try {
-            // console.log("get all course");
+            
             let courses = await Course.find({ class_id: req.params.class_ID });
+            let data = []
+            for (let i = 0; i < courses.length; i++) {
+                let x = {
+                    _id: courses[i]._id,
+                    course_name: courses[i].course_name,
+                    file: courses[i].file,
+                    description: courses[i].description,
+                    deadline: courses[i].deadline,
+                }
+                data.push(x)
+            }
             res.status(200).json({
-                courses: courses
+                courses: data
             })
-
 
         } catch (err) {
             console.log(err);
@@ -43,7 +57,53 @@ class courseController extends controller {
 
     async downloadFile(req, res) {
         try {
-            res.download(config.rootPath + `/uploads/${req.params.fileURL}`);
+            res.download(config.rootPath + `/uploads/files/${req.params.fileURL}`);
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
+    async downloadAll(req, res) {
+        try {
+            console.log("downloadAll");
+            let course = await Course.findById(req.params.courseID);
+            let files = [];
+            for (let i = 0; i < course.inbox.length; i++) {
+                let y = config.rootPath + `/uploads/inbox/${course.inbox[i].file_id}`
+                let x = { path: y, name: course.inbox[i].file_id }
+                files.push(x)
+            }
+            res.zip(files);
+
+            // res.zip([
+            //     { path: 't1.png', name: 't1.png' },
+            //     { path: 't2.png', name: 't2.png' },
+            // ]);
+
+            // res.zip([
+            //     { path: 't1.png', name: 't1.png' },
+            // ]);
+
+            // let files = [
+            //     { path: 't1.png', name: 't1.png' },
+            //     { path: 't2.png', name: 't2.png' }
+            // ]
+            //  let filename = "newfile";
+            // res.zip = function (files, filename, cb) {
+            //     cb(err, bytesZipped)
+            // }
+            // res.zip;
+
+            // res.zip({
+            //     files: [
+
+            //     { path: 't1.png', name: 't1.png' },
+            //     { path: 't2.png', name: 't2.png' }
+            //     ],
+            //     filename: 'zip-file-name.zip'
+            // });
+
+
         } catch (err) {
             console.log(err);
         }
@@ -80,15 +140,11 @@ class courseController extends controller {
 
     async uploadFile(req, res) {
         try {
-            console.log("uploadfile");
+            // console.log(req.body);
             let x = {
                 user_id: req.body.user_id,
                 file_id: req.file.filename
             }
-
-            // await Course.deleteOne({ inbox: { $elemMatch: { user_id: req.body.user_id } } })
-            // await Course.updateOne({ _id: req.body.courseID }, { $push: { inbox: x } });
-
             let course = await Course.findOne({ _id: req.body.courseID });
             let inbox = course.inbox;
             let unique_inbox = inbox.filter((item) => (item.user_id != req.body.user_id));
@@ -111,6 +167,13 @@ class courseController extends controller {
             let members = course.inbox;
 
             const data = [];
+
+            let all = {
+                number: 0,
+                fullName: "all",
+                email: "all",
+                file_id: ""
+            }
 
             for (let index = 0; index < members.length; index++) {
                 let user = await User.findById(members[index].user_id);

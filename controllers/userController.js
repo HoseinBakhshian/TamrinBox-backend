@@ -1,6 +1,8 @@
 let controller = require('./controller');
 const User = require("../models/user");
 const { validationResult } = require('express-validator');
+const jwt = require('jsonwebtoken');
+
 
 class userController extends controller {
 
@@ -14,6 +16,46 @@ class userController extends controller {
             next(err);
         }
 
+    }
+
+    async getCurrentUserID(req, res, next) {
+
+        const token = req.cookies.jwt;
+        if (token) {
+            jwt.verify(req.cookies.jwt, "jwtkey", (err, decoded) => {
+                if (err) {
+                    res.json({
+                        msg: "not authenticates",
+                        authenticated: false
+                    })
+                } else {
+                    res.json({
+                        msg: "authenticates",
+                        authenticated: true,
+                        id: decoded.id
+                    })
+                }
+            })
+        }
+
+        if (typeof (token) == 'undefined') {
+            res.json({
+                msg: "not authenticates",
+                authenticated: false
+            })
+        }
+    }
+
+    async logout(req, res, next) {
+        try {
+            res.cookie('jwt', '', { maxAge: 1 })
+            res.json({
+                msg: "از حساب خارج شدید",
+                logout: true
+            });
+        } catch (err) {
+            next(err)
+        }
     }
 
     async getOneUser(req, res, next) {

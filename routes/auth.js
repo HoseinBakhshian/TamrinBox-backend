@@ -3,7 +3,6 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const User = require("../models/user");
 const bcrypt = require('bcrypt');
-const res = require("express/lib/response");
 
 router.post("/login", async (req, res) => {
     try {
@@ -13,8 +12,10 @@ router.post("/login", async (req, res) => {
             const result = await bcrypt.compare(req.body.password, user.password);
             if (result) {
                 let id = user._id
-                const token = jwt.sign({ id }, "jwtkey", { expiresIn: '1d' })
-                res.json({ login: true, token, id });
+                let maxage = 3 * 24 * 60 * 60;
+                const token = jwt.sign({ id }, "jwtkey", { expiresIn: maxage })
+                res.cookie('jwt', token, { httpOnly: true, maxAge: maxage * 1000 })
+                res.json({ login: true});
             } else {
                 res.json({ login: false });
             }
@@ -57,41 +58,9 @@ router.post("/register", async (req, res) => {
 })
 
 
-const verifyjwt = (req, res, next) => {
-    console.log(req.headers);
-    const token = req.headers['access-token'];
 
-    if (!token) {
-        return res.json("need a token");
-    } else {
-        jwt.verify(token, "jwtkey", (err, decoded) => {
-            if (err) {
-                res.json("not authenticates")
-            } else {
-                req.id = decoded.id;
-                next();
-            }
-        })
-    }
-}
 
-router.get('/checkauth', (req, res) => {
-    const token = req.headers['access-token'];
 
-    if (!token) {
-        return res.json("need a token");
-    } else {
-        jwt.verify(token, "jwtkey", (err, decoded) => {
-            if (err) {
-                res.json("not authenticates")
-            } else {
-                req.id = decoded.id;
-                return res.json("authenticated")
-            }
-        })
-    }
-
-})
 
 module.exports = router
 
