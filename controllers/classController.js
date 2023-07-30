@@ -7,11 +7,10 @@ class classController extends controller {
     async createClass(req, res) {
 
         try {
-
             let new_Class = new Class({
                 class_name: req.body.class_name,
                 password: req.body.password,
-                capacity: req.body.capacity,
+                capacity: req.body.capacity || "200",
                 thumbnail: typeof (req.file) != 'undefined' ? req.file.filename : "",
                 owner: req.body.owner,
             });
@@ -28,11 +27,6 @@ class classController extends controller {
         try {
             let x = await Class.findOne({ _id: req.params.classID })
             await Class.deleteOne({ _id: req.params.classID })
-
-            //remove this classID from every user that joined in this class
-            // for (let index = 0; index < x.memebers.length; index++) {
-            //     await User.updateOne({ _id: x.memebers[index] }, { $pull: { memeberships: req.params.classID } })
-            // }
             await User.updateMany({ _id: { $in: x.memebers } }, { $pull: { memeberships: req.params.classID } })
             await Course.deleteMany({ class_id: req.params.classID })
 
@@ -48,14 +42,21 @@ class classController extends controller {
 
     async joinClass(req, res) {
         try {
+
             let class_id = req.body.class_id
             let password = req.body.password
             let user_id = req.body.user_id
 
             let _class = await Class.findOne({ _id: class_id });
-
-            if (_class) {
-                if ((_class.password != "" && _class.password == password) || _class.password == "") {
+            let haveCapacity = parseInt(_class.capacity) > _class.memebers.length;
+            if (_class && haveCapacity) {
+                if (_class.owner == user_id) {
+                    res.json({
+                        mess: "امکان عضویت در کلاس خود را ندارید",
+                        join: false
+                    })
+                }
+                else if ((_class.password == password) || _class.password == "") {
                     await User.updateOne({ _id: user_id }, { $addToSet: { memeberships: class_id } })
                     await Class.updateOne({ _id: class_id }, { $addToSet: { memebers: user_id } });
                     res.json({
@@ -68,33 +69,19 @@ class classController extends controller {
                         join: false
                     })
                 }
-            } else {
+            } else if (_class && !haveCapacity) {
+                res.json({
+                    mess: "ظرفیت کلاس تکمیل است",
+                    join: false
+                })
+            }
+            else {
                 res.json({
                     mess: "همچین کلاسی وجود ندارد",
                     join: false
                 })
             }
 
-            // if (_class) {
-            //     if (_class.password == password) {
-            //         await User.updateOne({ _id: user_id }, { $addToSet: { memeberships: class_id } })
-            //         await Class.updateOne({ _id: class_id }, { $addToSet: { memebers: user_id } });
-            //         res.json({
-            //             mess: "شما به کلاس اضافه شدید",
-            //             join: true
-            //         })
-            //     } else {
-            //         res.json({
-            //             mess: "رمز اشتباه است",
-            //             join: false
-            //         })
-            //     }
-            // } else {
-            //     res.json({
-            //         mess: "همچین کلاسی وجود ندارد",
-            //         join: false
-            //     })
-            // }
 
         } catch (err) {
             console.log(err);
@@ -124,9 +111,9 @@ class classController extends controller {
     }
 
     //return those classes that you are teacher
-    async getAllClasses(req, res) {
+    async getMyClasses(req, res) {
         try {
-            let classes = await Class.find({ owner: req.params.id });
+            let classes = await Class.find({ owner: req.params.userID });
             let data = []
             for (let item = 0; item < classes.length; item++) {
                 let owner = await User.findOne({ _id: classes[item].owner });
@@ -148,7 +135,7 @@ class classController extends controller {
     }
 
     //return those classes that you are student
-    async getSeveralClasses(req, res) {
+    async getOthersClasses(req, res) {
         try {
             let user = await User.findOne({ _id: req.params.userID });
             let classes = await Class.find({ _id: { $in: user.memeberships } });

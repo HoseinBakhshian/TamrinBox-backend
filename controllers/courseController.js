@@ -1,19 +1,13 @@
-const multer = require('multer');
 let controller = require('./controller');
 const Course = require('../models/course');
 const User = require("../models/user");
-let fs = require('fs');
-const { log } = require('console');
+const fs = require('fs');
 const zip = require('express-zip')
-// const zip = require('express-easy-zip');
 
 class courseController extends controller {
 
     async createCourse(req, res) {
         try {
-            // console.log(req.body);
-            // console.log(req.body);
-
             let course = new Course({
                 class_id: req.body.class_id,
                 course_name: req.body.title,
@@ -25,16 +19,43 @@ class courseController extends controller {
             res.status(200).json({
                 mess: "فایل اضافه شد"
             })
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
+    async getOthersclasses(req, res) {
+        try {
+            let courses = await Course.find({ class_id: req.params.classID });
+            let data = []
+
+            for (let i = 0; i < courses.length; i++) {
+                let inbox = courses[i].inbox
+                let info = inbox.find((item) => { return (item.user_id == req.params.userID) })
+                let x = {
+                    _id: courses[i]._id,
+                    course_name: courses[i].course_name,
+                    file: courses[i].file,
+                    description: courses[i].description,
+                    deadline: courses[i].deadline,
+                    file_id: info ? info.file_id : "",
+                    latest_upload: info ? info.latest_upload : "",
+                }
+                data.push(x)
+            }
+            res.status(200).json({
+                courses: data
+            })
 
         } catch (err) {
             console.log(err);
         }
     }
 
-    async getAllCourse(req, res) {
+    async getMyClasses(req, res) {
         try {
-            
-            let courses = await Course.find({ class_id: req.params.class_ID });
+
+            let courses = await Course.find({ class_id: req.params.classID });
             let data = []
             for (let i = 0; i < courses.length; i++) {
                 let x = {
@@ -63,9 +84,16 @@ class courseController extends controller {
         }
     }
 
+    async downloadInboxFile(req, res) {
+        try {
+            res.download(config.rootPath + `/uploads/inbox/${req.params.fileURL}`);
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
     async downloadAll(req, res) {
         try {
-            console.log("downloadAll");
             let course = await Course.findById(req.params.courseID);
             let files = [];
             for (let i = 0; i < course.inbox.length; i++) {
@@ -126,7 +154,7 @@ class courseController extends controller {
                 })
             }
 
-            fs.unlink(config.rootPath + `/uploads/${course.file}`, async (err) => {
+            fs.unlink(config.rootPath + `/uploads/files/${course.file}`, async (err) => {
                 if (err) {
                     throw err;
                 }
@@ -139,22 +167,36 @@ class courseController extends controller {
     }
 
     async uploadFile(req, res) {
+
         try {
-            // console.log(req.body);
+            const d = new Date();
             let x = {
                 user_id: req.body.user_id,
-                file_id: req.file.filename
+                file_id: req.file.filename,
+                latest_upload: d.toDateString()
+
             }
             let course = await Course.findOne({ _id: req.body.courseID });
-            let inbox = course.inbox;
-            let unique_inbox = inbox.filter((item) => (item.user_id != req.body.user_id));
-            unique_inbox.push(x);
+            let deadline = new Date(course.deadline);
+            if (deadline > Date.now() || isNaN(deadline)) {
+                let inbox = course.inbox;
+                let unique_inbox = inbox.filter((item) => (item.user_id != req.body.user_id));
+                unique_inbox.push(x);
+                await Course.updateOne({ _id: req.body.courseID }, { $set: { inbox: unique_inbox } });
+                res.json({
+                    msg: "Finished Uploading",
+                    uploaded: true
+                })
+            } else {
+                res.json({
+                    msg: "Deadline is Over",
+                    uploaded: false
 
-            await Course.updateOne({ _id: req.body.courseID }, { $set: { inbox: unique_inbox } });
+                })
 
-            res.status(200).json({
-                mess: "فایل اضافه شد"
-            })
+            }
+
+
 
         } catch (err) {
             console.log(err);
@@ -167,14 +209,6 @@ class courseController extends controller {
             let members = course.inbox;
 
             const data = [];
-
-            let all = {
-                number: 0,
-                fullName: "all",
-                email: "all",
-                file_id: ""
-            }
-
             for (let index = 0; index < members.length; index++) {
                 let user = await User.findById(members[index].user_id);
                 let info = {

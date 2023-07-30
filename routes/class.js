@@ -17,12 +17,12 @@ const storage = multer.diskStorage({
 
 const uploads = multer({ storage: storage })
 
-router.post("/", uploads.single('thumbnail'), classController.createClass.bind(classController))
-router.post("/add_to_class", classController.joinClass.bind(classController))
+router.post("/createClass", uploads.single('thumbnail'), classController.createClass.bind(classController))
+router.post("/joinClass", classController.joinClass.bind(classController))
 
 
-router.get("/:id", classController.getAllClasses.bind(classController))
-router.get("/get_several_classes/:userID", classController.getSeveralClasses.bind(classController))
+router.get("/getMyClasses/:userID", classController.getMyClasses.bind(classController))
+router.get("/getOthersClasses/:userID", classController.getOthersClasses.bind(classController))
 
 
 router.delete("/removeClass/:classID", classController.removeClass.bind(classController))

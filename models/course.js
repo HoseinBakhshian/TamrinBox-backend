@@ -9,7 +9,8 @@ const courseSchema = new Schema({
     deadline: { type: "String" },
     inbox: [{
         user_id: { type: "String" },
-        file_id: { type: "String" }
+        file_id: { type: "String" },
+        latest_upload: { type: "String" } 
     }],
 
 })
