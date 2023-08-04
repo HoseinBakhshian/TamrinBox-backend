@@ -1,22 +1,18 @@
 const express = require("express");
 const router = express.Router();
 let userController = require('../controllers/userController');
-let userValidator = require('../validators/userValidator');
 
-router.get("/", userController.getAllUsers.bind(userController))
 
 router.get("/getCurrentUserID", userController.getCurrentUserID.bind(userController))
 
 router.get("/logout", userController.logout.bind(userController))
 
-router.get("/:id", userController.getOneUser.bind(userController))
+router.get("/getUser/:id", userController.getUser.bind(userController))
 
 
 
-
-router.post("/", userValidator.handle(), userController.createUser.bind(userController))
-
-router.put("/:id", userController.updateUser.bind(userController))
+router.put("/updateUser", userController.updateUser.bind(userController))
+router.put("/updatePassword", userController.updatePassword.bind(userController))
 
 router.delete("/:id", userController.deleteUser.bind(userController))
 

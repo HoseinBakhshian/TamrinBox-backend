@@ -11,7 +11,7 @@ class classController extends controller {
                 class_name: req.body.class_name,
                 password: req.body.password,
                 capacity: req.body.capacity || "200",
-                thumbnail: typeof (req.file) != 'undefined' ? req.file.filename : "",
+                thumbnail: typeof (req.file) != 'undefined' ? req.file.filename : "default_class_Thumbnail.jpeg",
                 owner: req.body.owner,
             });
             await new_Class.save();
@@ -45,7 +45,7 @@ class classController extends controller {
 
             let class_id = req.body.class_id
             let password = req.body.password
-            let user_id = req.body.user_id
+             let user_id = req.body.user_id
 
             let _class = await Class.findOne({ _id: class_id });
             let haveCapacity = parseInt(_class.capacity) > _class.memebers.length;
@@ -84,6 +84,10 @@ class classController extends controller {
 
 
         } catch (err) {
+            res.json({
+                mess: "همچین کلاسی وجود ندارد",
+                join: false
+            })
             console.log(err);
         }
     }
@@ -110,13 +114,52 @@ class classController extends controller {
         }
     }
 
+
+    async updateClass(req, res) {
+        try {
+            let class_name = req.body.class_name;
+            let password = req.body.password;
+            let capacity = req.body.capacity;
+
+            await Class.updateOne({ _id: req.body.class_id }, { $set: { class_name, password, capacity } })
+            res.json({
+                mess: "تغییرات اعمال شد",
+            })
+
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
+
+    async getClassInfo(req, res) {
+        try {
+            let _class = await Class.findOne({ _id: req.params.classID });
+            let x = {
+                class_name: _class.class_name,
+                password: _class.password,
+                capacity: _class.capacity,
+                members: _class.memebers.length
+            }
+            res.json({
+                mess: "اطلاعات کلاس ارسال شد",
+                info: x
+            })
+
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
     //return those classes that you are teacher
     async getMyClasses(req, res) {
         try {
             let classes = await Class.find({ owner: req.params.userID });
+
             let data = []
             for (let item = 0; item < classes.length; item++) {
                 let owner = await User.findOne({ _id: classes[item].owner });
+
                 let x = {
                     _id: classes[item]._id,
                     class_name: classes[item].class_name,

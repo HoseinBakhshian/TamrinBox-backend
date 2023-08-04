@@ -2,7 +2,7 @@ let controller = require('./controller');
 const Course = require('../models/course');
 const User = require("../models/user");
 const fs = require('fs');
-const zip = require('express-zip')
+const zip = require('express-zip');
 
 class courseController extends controller {
 
@@ -24,7 +24,48 @@ class courseController extends controller {
         }
     }
 
-    async getOthersclasses(req, res) {
+    async uploadFile(req, res) {
+
+        try {
+            const d = new Date();
+            let date = d.toDateString() + " " + d.getHours() + ":" + d.getMinutes()
+            let x = {
+                user_id: req.body.user_id,
+                file_id: req.file.filename,
+                latest_upload: date
+
+            }
+            let course = await Course.findOne({ _id: req.body.courseID });
+            let deadline = new Date(course.deadline);
+            if (deadline > Date.now() || isNaN(deadline)) {
+                let inbox = course.inbox;
+                let unique_inbox = inbox.filter((item) => (item.user_id != req.body.user_id));
+                unique_inbox.push(x);
+                await Course.updateOne({ _id: req.body.courseID }, { $set: { inbox: unique_inbox } });
+                res.json({
+                    msg: "Finished Uploading",
+                    uploaded: true
+                })
+            } else {
+                res.json({
+                    msg: "Deadline is Over",
+                    uploaded: false
+
+                })
+
+            }
+
+        } catch (err) {
+            console.log(err);
+            res.json({
+                msg: "Server Error",
+                uploaded: false
+
+            })
+        }
+    }
+
+    async getOthersCourses(req, res) {
         try {
             let courses = await Course.find({ class_id: req.params.classID });
             let data = []
@@ -52,7 +93,7 @@ class courseController extends controller {
         }
     }
 
-    async getMyClasses(req, res) {
+    async getMyCourses(req, res) {
         try {
 
             let courses = await Course.find({ class_id: req.params.classID });
@@ -166,43 +207,6 @@ class courseController extends controller {
         }
     }
 
-    async uploadFile(req, res) {
-
-        try {
-            const d = new Date();
-            let x = {
-                user_id: req.body.user_id,
-                file_id: req.file.filename,
-                latest_upload: d.toDateString()
-
-            }
-            let course = await Course.findOne({ _id: req.body.courseID });
-            let deadline = new Date(course.deadline);
-            if (deadline > Date.now() || isNaN(deadline)) {
-                let inbox = course.inbox;
-                let unique_inbox = inbox.filter((item) => (item.user_id != req.body.user_id));
-                unique_inbox.push(x);
-                await Course.updateOne({ _id: req.body.courseID }, { $set: { inbox: unique_inbox } });
-                res.json({
-                    msg: "Finished Uploading",
-                    uploaded: true
-                })
-            } else {
-                res.json({
-                    msg: "Deadline is Over",
-                    uploaded: false
-
-                })
-
-            }
-
-
-
-        } catch (err) {
-            console.log(err);
-        }
-    }
-
     async getInbox(req, res) {
         try {
             let course = await Course.findOne({ _id: req.params.courseID });
@@ -230,6 +234,34 @@ class courseController extends controller {
         }
     }
 
+    async getCourseInfo(req, res) {
+        try {
+            let course = await Course.findById(req.params.courseID)
+            delete course.inbox
+            res.status(200).json({
+                mess: "sended",
+                info: course
+            })
+
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
+    async editCourses(req, res) {
+        try {
+            const { courseID, course_name, description, deadline } = req.body
+            let file = req.file ? req.file.filename : req.body.file
+
+            await Course.updateOne({ _id: courseID }, { $set: { course_name: course_name, description: description, deadline: deadline, file: file } })
+            res.status(200).json({
+                msg: "updated"
+            })
+
+        } catch (err) {
+            console.log(err);
+        }
+    }
 }
 
 
